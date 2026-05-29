@@ -124,7 +124,7 @@ python -m options_agno_team.cli serve-agent-os
 
 The server defaults to `http://localhost:7777`, persists AgentOS sessions in
 `.options_agno_team/agno_os.sqlite3`, and exposes the team as `options-trading-team`.
-AgentOS MCP is enabled by default at `/mcp`; pass `--no-mcp` to disable it.
+AgentOS MCP is disabled by default; pass `--enable-mcp` to expose it at `/mcp`.
 
 Useful overrides:
 

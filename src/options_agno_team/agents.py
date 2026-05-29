@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from importlib import import_module
 from typing import Any
 
 
@@ -75,7 +76,7 @@ def build_agno_agents(
     db: Any | None = None,
 ) -> list[Any]:
     try:
-        from agno.agent import Agent  # type: ignore[import-not-found]
+        Agent = getattr(import_module("agno.agent"), "Agent")
     except ImportError as exc:
         raise RuntimeError("Install the agno extra to build Agno agents") from exc
 
@@ -108,8 +109,8 @@ def build_agno_team(
     db: Any | None = None,
 ) -> Any:
     try:
-        from agno.team import Team  # type: ignore[import-not-found]
-        from agno.team.mode import TeamMode  # type: ignore[import-not-found]
+        Team = getattr(import_module("agno.team"), "Team")
+        TeamMode = getattr(import_module("agno.team.mode"), "TeamMode")
     except ImportError as exc:
         raise RuntimeError("Install the agno extra to build the Agno team") from exc
 

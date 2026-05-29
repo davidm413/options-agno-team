@@ -37,7 +37,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 model_id=args.model_id,
                 ollama_host=args.ollama_host,
                 db_file=args.os_db,
-                enable_mcp_server=not args.no_mcp,
+                enable_mcp_server=args.enable_mcp,
                 host=args.host,
                 port=args.port,
                 reload=args.reload,
@@ -168,7 +168,7 @@ def _parser() -> argparse.ArgumentParser:
     agent_os.add_argument("--host", default="localhost")
     agent_os.add_argument("--port", type=int, default=7777)
     agent_os.add_argument("--reload", action="store_true")
-    agent_os.add_argument("--no-mcp", action="store_true", help="Disable AgentOS MCP endpoint")
+    agent_os.add_argument("--enable-mcp", action="store_true", help="Enable AgentOS MCP endpoint")
     return parser
 
 

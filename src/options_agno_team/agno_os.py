@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Callable, Sequence
+from importlib import import_module
 from pathlib import Path
 from typing import Any
 
@@ -114,7 +115,7 @@ def build_open_source_model(
     host: str | None = None,
 ) -> Any:
     try:
-        from agno.models.ollama import Ollama  # type: ignore[import-not-found]
+        Ollama = getattr(import_module("agno.models.ollama"), "Ollama")
     except ImportError as exc:
         raise RuntimeError(
             'Install the agno extra to use the open-source Ollama model: '
@@ -135,11 +136,11 @@ def create_agent_os(
     model_id: str | None = None,
     ollama_host: str | None = None,
     db_file: str | Path | None = None,
-    enable_mcp_server: bool = True,
+    enable_mcp_server: bool = False,
 ) -> Any:
     try:
-        from agno.db.sqlite import SqliteDb  # type: ignore[import-not-found]
-        from agno.os import AgentOS  # type: ignore[import-not-found]
+        SqliteDb = getattr(import_module("agno.db.sqlite"), "SqliteDb")
+        AgentOS = getattr(import_module("agno.os"), "AgentOS")
     except ImportError as exc:
         raise RuntimeError(
             'Install the agno extra to run AgentOS: python -m pip install -e ".[agno]"'
@@ -169,7 +170,7 @@ def create_agent_os_app(
     model_id: str | None = None,
     ollama_host: str | None = None,
     db_file: str | Path | None = None,
-    enable_mcp_server: bool = True,
+    enable_mcp_server: bool = False,
 ) -> Any:
     return create_agent_os(
         system=system,
@@ -187,7 +188,7 @@ def serve_agent_os(
     model_id: str | None = None,
     ollama_host: str | None = None,
     db_file: str | Path | None = None,
-    enable_mcp_server: bool = True,
+    enable_mcp_server: bool = False,
     host: str = DEFAULT_AGENT_OS_HOST,
     port: int = DEFAULT_AGENT_OS_PORT,
     reload: bool = False,
