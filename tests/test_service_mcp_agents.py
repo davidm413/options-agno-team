@@ -1,8 +1,10 @@
 import sys
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from options_agno_team.agents import build_agent_specs
+from options_agno_team.agno_os import build_trading_tool_functions, tool_names
 from options_agno_team.config import AppConfig, DataMode
 from options_agno_team.mcp_server import build_tool_handlers
 from options_agno_team.models import ExecutionStatus
@@ -80,3 +82,22 @@ def test_agent_specs_include_required_roles() -> None:
     assert "Execution Agent" in names
     assert "Monitoring Agent" in names
     assert "Learning Reflection Agent" in names
+
+
+def test_agent_os_trading_tools_are_jsonable_without_agno_dependency() -> None:
+    system = build_system()
+    tools = build_trading_tool_functions(system)
+    names = tool_names(tools)
+
+    assert "detect_regime" in names
+    assert "rank_trade_candidates" in names
+    assert "execute_strategy" in names
+
+    by_name = {tool.__name__: tool for tool in tools}
+    regime = json.loads(by_name["detect_regime"]("BULL"))
+    proposal = json.loads(by_name["propose_options_strategy"]("BULL"))
+    risk = json.loads(by_name["check_portfolio_risk"](proposal["proposal_id"]))
+
+    assert regime["symbol"] == "BULL"
+    assert proposal["proposal_id"]
+    assert risk["approved"] is True

@@ -28,6 +28,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         create_mcp_app(_system(args)).run(transport=args.transport)
         return 0
 
+    if args.command == "serve-agent-os":
+        from options_agno_team.agno_os import serve_agent_os
+
+        try:
+            serve_agent_os(
+                system=_system(args),
+                model_id=args.model_id,
+                ollama_host=args.ollama_host,
+                db_file=args.os_db,
+                enable_mcp_server=not args.no_mcp,
+                host=args.host,
+                port=args.port,
+                reload=args.reload,
+            )
+        except RuntimeError as exc:
+            parser.exit(status=1, message=f"error: {exc}\n")
+        return 0
+
     if args.command == "public-smoke":
         _print_json(run_public_smoke(args.symbol, config=_config(args)))
         return 0
@@ -138,6 +156,19 @@ def _parser() -> argparse.ArgumentParser:
 
     serve = subparsers.add_parser("serve-mcp", help="Start the FastMCP server")
     serve.add_argument("--transport", default="streamable-http")
+
+    agent_os = subparsers.add_parser("serve-agent-os", help="Start the Agno AgentOS server")
+    agent_os.add_argument("--model-id", default=os.environ.get("AGNO_MODEL_ID"))
+    agent_os.add_argument("--ollama-host", default=os.environ.get("AGNO_OLLAMA_HOST"))
+    agent_os.add_argument(
+        "--os-db",
+        default=os.environ.get("AGNO_OS_DB_PATH", ".options_agno_team/agno_os.sqlite3"),
+        help="AgentOS SQLite DB path; defaults to AGNO_OS_DB_PATH or .options_agno_team/agno_os.sqlite3",
+    )
+    agent_os.add_argument("--host", default="localhost")
+    agent_os.add_argument("--port", type=int, default=7777)
+    agent_os.add_argument("--reload", action="store_true")
+    agent_os.add_argument("--no-mcp", action="store_true", help="Disable AgentOS MCP endpoint")
     return parser
 
 

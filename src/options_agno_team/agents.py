@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -67,29 +68,69 @@ def build_agent_specs() -> tuple[AgentRoleSpec, ...]:
     )
 
 
-def build_agno_team(*, mcp_tools: Any, model: Any | None = None) -> Any:
+def build_agno_agents(
+    *,
+    tools: Sequence[Any],
+    model: Any | None = None,
+    db: Any | None = None,
+) -> list[Any]:
     try:
         from agno.agent import Agent  # type: ignore[import-not-found]
+    except ImportError as exc:
+        raise RuntimeError("Install the agno extra to build Agno agents") from exc
+
+    members = []
+    for spec in build_agent_specs():
+        kwargs: dict[str, Any] = {}
+        if db is not None:
+            kwargs["db"] = db
+        members.append(
+            Agent(
+                id=_agent_id(spec.name),
+                name=spec.name,
+                role=spec.role,
+                model=model,
+                tools=list(tools),
+                instructions=list(spec.instructions),
+                markdown=True,
+                **kwargs,
+            )
+        )
+    return members
+
+
+def build_agno_team(
+    *,
+    mcp_tools: Any | None = None,
+    tools: Sequence[Any] | None = None,
+    members: Sequence[Any] | None = None,
+    model: Any | None = None,
+    db: Any | None = None,
+) -> Any:
+    try:
         from agno.team import Team  # type: ignore[import-not-found]
         from agno.team.mode import TeamMode  # type: ignore[import-not-found]
     except ImportError as exc:
         raise RuntimeError("Install the agno extra to build the Agno team") from exc
 
-    members = [
-        Agent(
-            name=spec.name,
-            role=spec.role,
-            model=model,
-            tools=[mcp_tools],
-            instructions=list(spec.instructions),
-        )
-        for spec in build_agent_specs()
-    ]
+    if members is None and tools is None and mcp_tools is None:
+        raise ValueError("Provide mcp_tools, tools, or members to build the Agno team")
+
+    agno_tools = list(tools) if tools is not None else [mcp_tools]
+    team_members = list(members) if members is not None else build_agno_agents(
+        tools=agno_tools,
+        model=model,
+        db=db,
+    )
+    kwargs: dict[str, Any] = {}
+    if db is not None:
+        kwargs["db"] = db
     return Team(
+        id="options-trading-team",
         name="Regime Options Trading Team",
         mode=TeamMode.coordinate,
         model=model,
-        members=members,
+        members=team_members,
         instructions=[
             "Coordinate specialist agents using only deterministic trading tools.",
             "All math, prices, greeks, scores, and risk status must come from tool output.",
@@ -97,4 +138,9 @@ def build_agno_team(*, mcp_tools: Any, model: Any | None = None) -> Any:
         ],
         show_members_responses=True,
         markdown=True,
+        **kwargs,
     )
+
+
+def _agent_id(name: str) -> str:
+    return name.lower().replace(" ", "-")

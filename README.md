@@ -110,6 +110,31 @@ $env:PYTHONPATH="src"
 python -m options_agno_team.cli serve-mcp
 ```
 
+## Agno AgentOS
+
+AgentOS is optional and uses an open-source Ollama model by default.
+
+```powershell
+python -m pip install -e ".[agno]"
+ollama pull llama3.1:8b
+$env:PYTHONPATH="src"
+$env:AGNO_MODEL_ID="llama3.1:8b"
+python -m options_agno_team.cli serve-agent-os
+```
+
+The server defaults to `http://localhost:7777`, persists AgentOS sessions in
+`.options_agno_team/agno_os.sqlite3`, and exposes the team as `options-trading-team`.
+AgentOS MCP is enabled by default at `/mcp`; pass `--no-mcp` to disable it.
+
+Useful overrides:
+
+```powershell
+$env:AGNO_MODEL_ID="qwen2.5:7b"
+$env:AGNO_OLLAMA_HOST="http://localhost:11434"
+$env:AGNO_OS_DB_PATH=".options_agno_team/agentos.sqlite3"
+python -m options_agno_team.cli serve-agent-os --port 7777
+```
+
 ## Main Components
 
 - Fixture and Public.com market data adapters
@@ -120,6 +145,7 @@ python -m options_agno_team.cli serve-mcp
 - Backtesting, monitoring, and learning/reflection services
 - FastMCP tool registration helpers
 - Agno agent/team factory helpers
+- Agno AgentOS runtime using an open-source Ollama model by default
 - Deterministic candidate ranking for MCP and Agno workflows
 
 ## Live Trading Gates
