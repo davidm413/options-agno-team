@@ -8,7 +8,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from typing import Any
-from uuid import NAMESPACE_URL, uuid5
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from options_agno_team.config import AppConfig
 from options_agno_team.execution import ProposalRepository
@@ -32,12 +32,7 @@ class AlertDispatcher:
     ) -> AlertEvent:
         timestamp = datetime.now(timezone.utc)
         event = AlertEvent(
-            alert_id=str(
-                uuid5(
-                    NAMESPACE_URL,
-                    f"alert:{timestamp.isoformat()}:{category}:{proposal_id or ''}:{symbol or ''}",
-                )
-            ),
+            alert_id=str(uuid4()),
             timestamp=timestamp,
             severity=severity,
             category=category,
