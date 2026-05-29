@@ -17,11 +17,28 @@ class RiskEngine:
         equity = float(account.get("equity", 0.0))
         buying_power = float(account.get("buying_power", 0.0))
         base_delta = float(account.get("portfolio_delta", 0.0))
+        day_pnl = float(account.get("day_pnl", account.get("daily_pnl", 0.0)) or 0.0)
+        trades_today = int(account.get("trades_today", 0) or 0)
+        open_trades = len(self.adapter.get_positions())
         risk_budget = equity * self.config.max_risk_per_trade
         proposal_delta = _proposal_delta(proposal)
         portfolio_delta_after = base_delta + proposal_delta
         reasons: list[str] = []
 
+        if self.config.kill_switch_enabled:
+            reasons.append("kill switch is enabled")
+        if day_pnl <= -abs(self.config.daily_loss_limit):
+            reasons.append(
+                f"day_pnl {day_pnl:.2f} breaches daily_loss_limit {self.config.daily_loss_limit:.2f}"
+            )
+        if open_trades >= self.config.max_open_trades:
+            reasons.append(
+                f"open_trades {open_trades} meets or exceeds max_open_trades {self.config.max_open_trades}"
+            )
+        if trades_today >= self.config.max_trades_per_day:
+            reasons.append(
+                f"trades_today {trades_today} meets or exceeds max_trades_per_day {self.config.max_trades_per_day}"
+            )
         if proposal.max_loss > risk_budget:
             reasons.append(
                 f"max_loss {proposal.max_loss:.2f} exceeds risk_budget {risk_budget:.2f}"

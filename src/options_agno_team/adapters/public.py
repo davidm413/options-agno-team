@@ -107,6 +107,15 @@ class PublicMarketDataAdapter:
             or 0.0,
             "buying_power": _float_or_none(getattr(portfolio, "buying_power", None)) or 0.0,
             "portfolio_delta": _float_or_none(getattr(portfolio, "delta", None)) or 0.0,
+            "day_pnl": _float_or_none(getattr(portfolio, "day_pnl", None))
+            or _float_or_none(getattr(portfolio, "daily_pnl", None))
+            or _float_or_none(getattr(portfolio, "todays_pnl", None))
+            or 0.0,
+            "trades_today": int(
+                _float_or_none(getattr(portfolio, "trades_today", None))
+                or _float_or_none(getattr(portfolio, "today_trade_count", None))
+                or 0
+            ),
         }
 
     def get_positions(self) -> list[dict[str, Any]]:
@@ -149,11 +158,11 @@ class PublicMarketDataAdapter:
         config = None
         if self._sdk is not None:
             config = self._sdk.SubscriptionConfig(polling_frequency_seconds=interval_seconds)
-        return self.client.price_stream.subscribe(instruments, on_change, config)
+        return str(self.client.price_stream.subscribe(instruments, on_change, config))
 
     def _build_client(self) -> Any:
         try:
-            import public_api_sdk as sdk  # type: ignore[import-not-found]
+            import public_api_sdk as sdk
         except ImportError as exc:
             raise RuntimeError("publicdotcom-py is required for DATA_MODE=public") from exc
 

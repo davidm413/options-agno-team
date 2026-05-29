@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 
 
 class OptionType(str, Enum):
@@ -50,6 +50,12 @@ class ExecutionStatus(str, Enum):
     PREFLIGHTED = "preflighted"
     PLACED = "placed"
     REJECTED = "rejected"
+
+
+class AlertSeverity(str, Enum):
+    INFO = "info"
+    WARNING = "warning"
+    CRITICAL = "critical"
 
 
 @dataclass(frozen=True)
@@ -197,9 +203,160 @@ class ExecutionResult:
     audit: tuple[str, ...] = field(default_factory=tuple)
 
 
+@dataclass(frozen=True)
+class LiveReadinessReport:
+    ready: bool
+    execution_mode: str
+    checks: dict[str, bool]
+    blockers: tuple[str, ...]
+    confirmations: tuple[str, ...]
+    risk_limits: dict[str, float | int | bool]
+    alerting: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class AlertEvent:
+    alert_id: str
+    timestamp: datetime
+    severity: AlertSeverity
+    category: str
+    message: str
+    proposal_id: str | None = None
+    symbol: str | None = None
+    payload: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class PaperPosition:
+    position_id: str
+    proposal_id: str
+    symbol: str
+    strategy_type: StrategyType
+    quantity: int
+    opened_at: datetime
+    updated_at: datetime
+    entry_net_price: float
+    mark_net_price: float
+    unrealized_pnl: float
+    status: str = "open"
+
+
+@dataclass(frozen=True)
+class BacktestTrade:
+    proposal_id: str
+    symbol: str
+    strategy_type: StrategyType
+    entry_time: datetime
+    exit_time: datetime
+    entry_price: float
+    exit_price: float
+    underlying_return: float
+    strategy_return: float
+    pnl: float
+    max_loss: float
+    approved: bool
+    regime_label: str
+    volatility_regime: VolatilityRegime
+    directional_bias: DirectionalBias
+    thesis_matched: bool
+    outcome: str
+    original_thesis: tuple[str, ...]
+    outcome_vs_thesis: str
+
+
+@dataclass(frozen=True)
+class BacktestReport:
+    report_id: str
+    symbols: tuple[str, ...]
+    started_at: datetime
+    ended_at: datetime
+    lookback: int
+    min_lookback: int
+    holding_period: int
+    step: int
+    trades: tuple[BacktestTrade, ...]
+    win_rate: float
+    max_drawdown: float
+    average_return: float
+    regime_accuracy: float
+    strategy_performance: dict[str, dict[str, float]]
+    symbol_performance: dict[str, dict[str, float]]
+    regime_thesis_performance: dict[str, dict[str, float]]
+    regime_thesis_insights: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class MonitoringEvent:
+    event_id: str
+    position_id: str
+    proposal_id: str
+    symbol: str
+    timestamp: datetime
+    action: str
+    triggers: tuple[str, ...]
+    original_regime_label: str
+    current_regime_label: str
+    unrealized_pnl: float
+    pnl_pct_of_risk: float
+    net_delta: float
+    entropy: float
+    notes: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class TradeReflection:
+    reflection_id: str
+    position_id: str
+    proposal_id: str
+    symbol: str
+    strategy_type: StrategyType
+    timestamp: datetime
+    original_regime_label: str
+    current_regime_label: str
+    original_thesis: tuple[str, ...]
+    thesis_matched: bool
+    outcome: str
+    pnl: float
+    observations: tuple[str, ...]
+    original_volatility_regime: VolatilityRegime
+    original_directional_bias: DirectionalBias
+    current_volatility_regime: VolatilityRegime
+    current_directional_bias: DirectionalBias
+    outcome_vs_thesis: str
+
+
+@dataclass(frozen=True)
+class LearningReport:
+    report_id: str
+    generated_at: datetime
+    reflections: tuple[TradeReflection, ...]
+    performance_by_thesis: dict[str, dict[str, float]]
+    performance_by_regime_thesis: dict[str, dict[str, float]]
+    insights: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class RankedTradeCandidate:
+    rank: int
+    symbol: str
+    score: float
+    proposal_id: str
+    strategy_type: StrategyType
+    volatility_regime: VolatilityRegime
+    directional_bias: DirectionalBias
+    regime_label: str
+    confidence: float
+    risk_status: RiskStatus
+    risk_reasons: tuple[str, ...]
+    max_loss: float
+    risk_budget: float
+    is_live_capable: bool
+    rationale: tuple[str, ...]
+
+
 def to_jsonable(value: Any) -> Any:
-    if is_dataclass(value):
-        return {k: to_jsonable(v) for k, v in asdict(value).items()}
+    if is_dataclass(value) and not isinstance(value, type):
+        return {k: to_jsonable(v) for k, v in asdict(cast(Any, value)).items()}
     if isinstance(value, Enum):
         return value.value
     if isinstance(value, datetime):

@@ -9,6 +9,9 @@ description = "AI-native market regime and options strategy system"
 requires-python = ">=3.11"
 dependencies = []
 
+[project.scripts]
+options-agno = "options_agno_team.cli:main"
+
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 public = ["publicdotcom-py>=0.1.15"]

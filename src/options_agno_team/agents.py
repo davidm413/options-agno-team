@@ -23,7 +23,17 @@ def build_agent_specs() -> tuple[AgentRoleSpec, ...]:
         AgentRoleSpec(
             name="Options Strategy Agent",
             role="Turns approved regime snapshots into options strategy proposals.",
-            instructions=("Use propose_options_strategy; do not invent contracts or prices.",),
+            instructions=(
+                "Use propose_options_strategy; do not invent contracts, greeks, prices, or liquidity.",
+            ),
+        ),
+        AgentRoleSpec(
+            name="Trade Ranking Agent",
+            role="Ranks proposed candidates using deterministic scores and risk decisions.",
+            instructions=(
+                "Use rank_trade_candidates for ranking; do not create scores manually.",
+                "Explain ranking with returned rationale, regime, risk status, and score only.",
+            ),
         ),
         AgentRoleSpec(
             name="Risk Agent",
@@ -33,17 +43,26 @@ def build_agent_specs() -> tuple[AgentRoleSpec, ...]:
         AgentRoleSpec(
             name="Execution Agent",
             role="Handles preflight and gated execution.",
-            instructions=("Use preflight_strategy first and execute_strategy only when requested.",),
+            instructions=(
+                "Use check_portfolio_risk and preflight_strategy before execute_strategy.",
+                "Never place or simulate an execution for a rejected risk decision.",
+            ),
         ),
         AgentRoleSpec(
             name="Monitoring Agent",
             role="Monitors open positions and regime changes.",
-            instructions=("Report risk changes; do not place trades directly.",),
+            instructions=(
+                "Use list_paper_positions, mark_to_market, and monitor_paper_positions for paper position state.",
+                "Report risk changes; do not place trades directly.",
+            ),
         ),
         AgentRoleSpec(
             name="Learning Reflection Agent",
             role="Summarizes post-trade outcomes for future parameter review.",
-            instructions=("Record observations; do not modify execution gates.",),
+            instructions=(
+                "Use reflect_trades and run_backtest to compare outcomes against the original thesis.",
+                "Record observations; do not modify execution gates.",
+            ),
         ),
     )
 
@@ -73,6 +92,7 @@ def build_agno_team(*, mcp_tools: Any, model: Any | None = None) -> Any:
         members=members,
         instructions=[
             "Coordinate specialist agents using only deterministic trading tools.",
+            "All math, prices, greeks, scores, and risk status must come from tool output.",
             "Never bypass risk approval, preflight, or live execution gates.",
         ],
         show_members_responses=True,

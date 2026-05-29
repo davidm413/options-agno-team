@@ -3,31 +3,72 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
-from options_agno_team.config import AppConfig, ExecutionMode
+from options_agno_team.config import AppConfig, DataMode, ExecutionMode
 from options_agno_team.models import (
+    AlertEvent,
+    BacktestReport,
     ExecutionResult,
     ExecutionStatus,
+    MonitoringEvent,
     OrderIntent,
     OrderSide,
+    PaperPosition,
+    RegimeSnapshot,
     RiskDecision,
     StrategyProposal,
     StrategyType,
+    TradeReflection,
     to_jsonable,
 )
+from options_agno_team.readiness import evaluate_live_readiness
 
 
 @dataclass
 class ProposalRepository:
     proposals: dict[str, StrategyProposal] = field(default_factory=dict)
     risk_decisions: dict[str, RiskDecision] = field(default_factory=dict)
+    regime_snapshots: list[RegimeSnapshot] = field(default_factory=list)
+    execution_results: list[ExecutionResult] = field(default_factory=list)
+    paper_positions: dict[str, PaperPosition] = field(default_factory=dict)
+    backtest_reports: dict[str, BacktestReport] = field(default_factory=dict)
+    monitoring_events: list[MonitoringEvent] = field(default_factory=list)
+    trade_reflections: list[TradeReflection] = field(default_factory=list)
+    alert_events: list[AlertEvent] = field(default_factory=list)
+
+    def save_regime_snapshot(self, snapshot: RegimeSnapshot) -> None:
+        self.regime_snapshots.append(snapshot)
 
     def save_proposal(self, proposal: StrategyProposal) -> None:
         self.proposals[proposal.proposal_id] = proposal
 
     def save_risk_decision(self, decision: RiskDecision) -> None:
         self.risk_decisions[decision.proposal_id] = decision
+
+    def save_execution_result(self, result: ExecutionResult) -> None:
+        self.execution_results.append(result)
+
+    def save_paper_position(self, position: PaperPosition) -> None:
+        self.paper_positions[position.position_id] = position
+
+    def save_backtest_report(self, report: BacktestReport) -> None:
+        self.backtest_reports[report.report_id] = report
+
+    def save_monitoring_event(self, event: MonitoringEvent) -> None:
+        self.monitoring_events.append(event)
+
+    def save_trade_reflection(self, reflection: TradeReflection) -> None:
+        self.trade_reflections.append(reflection)
+
+    def save_alert_event(self, event: AlertEvent) -> None:
+        self.alert_events.append(event)
+
+    def list_paper_positions(self, *, open_only: bool = True) -> list[PaperPosition]:
+        positions = list(self.paper_positions.values())
+        if open_only:
+            positions = [position for position in positions if position.status == "open"]
+        return sorted(positions, key=lambda position: position.opened_at)
 
     def get_proposal(self, proposal_id: str) -> StrategyProposal:
         return self.proposals[proposal_id]
@@ -45,6 +86,18 @@ class ExecutionGateway:
     def preflight(self, proposal: StrategyProposal, risk: RiskDecision) -> ExecutionResult:
         intent = _order_intent(proposal)
         if self.config.execution_mode is ExecutionMode.DRY_RUN:
+            if self.config.data_mode is DataMode.PUBLIC and self.public_client is not None:
+                rejection = self._public_preflight_rejection(proposal, risk)
+                if rejection:
+                    return self._result(proposal, ExecutionStatus.REJECTED, rejection, intent, None)
+                preflight_response = self._call_public_preflight(proposal, intent)
+                return self._result(
+                    proposal,
+                    ExecutionStatus.PREFLIGHTED,
+                    "public preflight succeeded in dry-run mode; no order submitted",
+                    intent,
+                    _response_to_dict(preflight_response),
+                )
             message = "dry-run preflight recorded; no broker call made"
             return self._result(proposal, ExecutionStatus.DRY_RUN, message, intent, None)
         rejection = self._live_rejection(proposal, risk)
@@ -85,8 +138,9 @@ class ExecutionGateway:
         )
 
     def _live_rejection(self, proposal: StrategyProposal, risk: RiskDecision) -> str | None:
-        if not self.config.live_order_enabled:
-            return "live trading disabled by config"
+        readiness = evaluate_live_readiness(self.config)
+        if not readiness.ready:
+            return "live readiness failed: " + "; ".join(readiness.blockers)
         if self.public_client is None:
             return "public client is required for live execution"
         if not risk.approved:
@@ -95,6 +149,21 @@ class ExecutionGateway:
             return f"{proposal.strategy_type.value} is not live-capable"
         if proposal.strategy_type.value not in self.config.allowed_live_strategies:
             return f"{proposal.strategy_type.value} is not allowed for live execution"
+        return None
+
+    def _public_preflight_rejection(
+        self, proposal: StrategyProposal, risk: RiskDecision
+    ) -> str | None:
+        if self.config.kill_switch_enabled:
+            return "kill switch is enabled"
+        if self.public_client is None:
+            return "public client is required for Public preflight"
+        if not risk.approved:
+            return "risk decision is not approved"
+        if not proposal.is_live_capable:
+            return f"{proposal.strategy_type.value} is not preflight-enabled"
+        if proposal.strategy_type.value not in self.config.allowed_live_strategies:
+            return f"{proposal.strategy_type.value} is not allowed for Public preflight"
         return None
 
     def _call_public_preflight(self, proposal: StrategyProposal, intent: OrderIntent) -> Any:
@@ -178,9 +247,9 @@ def _response_to_dict(value: Any) -> dict[str, Any]:
     if value is None:
         return {}
     if hasattr(value, "model_dump"):
-        return to_jsonable(value.model_dump())
+        return cast(dict[str, Any], to_jsonable(value.model_dump()))
     if hasattr(value, "__dict__"):
-        return to_jsonable(vars(value))
+        return cast(dict[str, Any], to_jsonable(vars(value)))
     if isinstance(value, dict):
-        return to_jsonable(value)
+        return cast(dict[str, Any], to_jsonable(value))
     return {"value": str(value)}

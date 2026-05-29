@@ -30,6 +30,8 @@ class FixtureMarketDataAdapter:
             "equity": 100_000.0,
             "buying_power": 50_000.0,
             "portfolio_delta": 0.02,
+            "day_pnl": 0.0,
+            "trades_today": 0,
         }
         self._positions = [
             {"symbol": "SPY", "quantity": 10, "delta": 0.01, "market_value": 5_200.0}
@@ -208,9 +210,12 @@ def _option_quote(
 ) -> OptionContractQuote:
     bid = max(0.01, round(mid - 0.05, 2))
     ask = round(mid + 0.05, 2)
-    delta_sign = 1.0 if option_type is OptionType.CALL else -1.0
     moneyness = (spot - strike) / max(spot, 1.0)
-    delta = max(-0.95, min(0.95, delta_sign * (0.45 + moneyness * 2.0)))
+    if option_type is OptionType.CALL:
+        delta = 0.45 + moneyness * 2.0
+    else:
+        delta = -0.45 + moneyness * 2.0
+    delta = max(-0.95, min(0.95, delta))
     symbol = _make_osi(underlying, expiration, option_type, strike)
     return OptionContractQuote(
         symbol=symbol,
