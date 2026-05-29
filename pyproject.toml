@@ -16,7 +16,7 @@ options-agno = "options_agno_team.cli:main"
 dev = ["pytest>=8.0"]
 public = ["publicdotcom-py>=0.1.15"]
 mcp = ["mcp>=1.23.0"]
-agno = ["agno[ollama,os]>=2.3.24", "fastmcp>=2.0.0"]
+agno = ["agno[ollama,os]>=2.3.24"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
