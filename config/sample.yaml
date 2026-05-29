@@ -1,0 +1,37 @@
+provider:
+  name: public
+  api_secret_env: PUBLIC_API_SECRET_KEY
+  account_id_env: PUBLIC_DEFAULT_ACCOUNT_NUMBER
+universe:
+  equities: [SPY, QQQ, IWM]
+  option_underlyings: [SPY, QQQ]
+  crypto: []
+features:
+  lookback_bars: 30
+  realized_vol_window: 10
+  wasserstein_baseline_bars: 20
+  entropy_bins: 8
+regimes:
+  confidence_threshold: 0.55
+  high_vol_threshold: 0.30
+  low_vol_threshold: 0.12
+  momentum_threshold: 0.01
+strategies:
+  min_confidence: 0.60
+  max_bid_ask_spread: "0.40"
+  min_open_interest: 1
+risk:
+  max_loss_per_trade: "500"
+  max_buying_power_fraction: "0.05"
+  max_open_trades: 5
+streaming:
+  enabled: false
+persistence:
+  redis_url: redis://localhost:6379/0
+  postgres_dsn: postgresql+psycopg://regime:regime@localhost:5432/regime
+  parquet_root: data/parquet
+execution:
+  mode: dry_run
+  live_trading_enabled: false
+  require_operator_approval: true
+  kill_switch_enabled: true
